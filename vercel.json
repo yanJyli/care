@@ -1,0 +1,6 @@
+{
+  "installCommand": "npm install --prefix care_web",
+  "buildCommand": "npm run build --prefix care_web",
+  "outputDirectory": "care_web/dist",
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+}

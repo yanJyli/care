@@ -1,4 +1,4 @@
-import { analyzeProduct, describeComparison, describeSingle, reviewFormula, shortVerdict } from '@/lib/analyze'
+import { analyzeProduct, citeFormula, describeComparison, describeSingle, reviewFormula, shortVerdict } from '@/lib/analyze'
 import { findProduct } from '@/lib/search'
 import type { ChatRequest } from '@/lib/ask'
 import type { ProductReport } from '@/types'
@@ -69,8 +69,19 @@ export async function localReply(input: ChatRequest) {
 }
 
 function compose(report: ProductReport, input: ChatRequest) {
-  const review = reviewFormula(report.ingredients ?? '', input.criterion)
-  return ['ПЛЮСЫ', ...review.plus, 'МИНУСЫ', ...review.minus, 'ВЕРДИКТ', verdict(report, input.criterion), 'СОВЕТ', advice(input, report)]
+  const formula = report.ingredients?.trim() ?? ''
+  const review = reviewFormula(formula, input.criterion)
+  const cited = citeFormula(formula)
+  const lead =
+    cited.length > 0
+      ? `По этому списку средство собрано вокруг таких ролей: ${cited.map((group) => group.title.toLowerCase()).join(', ')}.`
+      : ''
+  const opening = formula ? ['СОСТАВ', formula, ...(lead ? [lead] : [])] : []
+  const groups =
+    cited.length > 0
+      ? ['РАЗБОР', ...cited.flatMap((group) => [`ГРУППА: ${group.title}`, ...group.lines])]
+      : []
+  return [...opening, ...groups, 'ПЛЮСЫ', ...review.plus, 'МИНУСЫ', ...review.minus, 'ВЕРДИКТ', verdict(report, input.criterion), 'СОВЕТ', advice(input, report)]
 }
 
 function verdict(report: ProductReport, criterion: string) {

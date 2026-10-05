@@ -14,6 +14,13 @@ function readKey() {
 
 const config = getDefaultConfig(__dirname)
 const key = readKey()
+const webCopy = /[/\\]care_web[/\\].*/
+const currentBlockList = config.resolver.blockList
+config.resolver.blockList = Array.isArray(currentBlockList)
+  ? [...currentBlockList, webCopy]
+  : currentBlockList
+    ? [currentBlockList, webCopy]
+    : [webCopy]
 
 config.server = {
   ...config.server,

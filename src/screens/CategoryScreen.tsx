@@ -25,7 +25,10 @@ export function CategoryScreen() {
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }} showsVerticalScrollIndicator={false}>
       <ScreenHeader
-        crumbs={['Care', category.title]}
+        crumbs={[
+          { label: 'Care', onPress: () => goBack('/') },
+          { label: category.title },
+        ]}
         title={category.title}
         subtitle="Выберите тип средства"
         onBack={() => goBack('/')}

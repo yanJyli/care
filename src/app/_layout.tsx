@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar'
 import { View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { CatalogProvider } from '@/lib/store'
+import { Splash } from '@/components/Splash'
 import { theme } from '@/theme'
 
 export default function RootLayout() {
@@ -30,6 +31,7 @@ export default function RootLayout() {
           }}
         />
       </CatalogProvider>
+      <Splash />
     </SafeAreaProvider>
   )
 }

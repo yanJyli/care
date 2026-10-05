@@ -25,7 +25,14 @@ export function CriteriaScreen() {
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) }} showsVerticalScrollIndicator={false}>
       <ScreenHeader
-        crumbs={['Care', found.category.title, found.section.title]}
+        crumbs={[
+          { label: 'Care', onPress: () => goBack('/') },
+          {
+            label: found.category.title,
+            onPress: () => goBack({ pathname: '/category/[id]', params: { id: found.category.id } }),
+          },
+          { label: found.section.title },
+        ]}
         title={found.section.title}
         subtitle="Выберите критерий"
         onBack={() => goBack({ pathname: '/category/[id]', params: { id: found.category.id } })}

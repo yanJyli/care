@@ -180,6 +180,34 @@ function capital(label: string) {
   return label.charAt(0).toUpperCase() + label.slice(1)
 }
 
+const CITE_GROUPS: { title: string; effects: Effect[] }[] = [
+  { title: 'Антивозрастной компонент', effects: ['antiage'] },
+  { title: 'Активные добавки', effects: ['soothing', 'antioxidant', 'repair', 'brightening', 'refreshing'] },
+  { title: 'Защита от солнца', effects: ['uv'] },
+  { title: 'Очищение и обновление', effects: ['exfoliant', 'cleansing', 'harsh', 'gentle', 'sebum'] },
+  { title: 'Увлажнители и эмоленты', effects: ['humectant', 'emollient', 'oil', 'butter', 'occlusive', 'barrier', 'silicone', 'protein'] },
+]
+
+export function citeFormula(ingredients: string) {
+  const buckets = CITE_GROUPS.map((group) => ({ title: group.title, lines: [] as string[] }))
+  const seen = new Set<string>()
+
+  splitIngredients(ingredients).forEach((line) => {
+    const rule = matchIngredient(line)
+    if (!rule || rule.effects.length === 0) return
+    const key = line.toLowerCase().replace(/ё/g, 'е')
+    if (seen.has(key)) return
+    const index = CITE_GROUPS.findIndex((group) => rule.effects.some((effect) => group.effects.includes(effect)))
+    if (index < 0) return
+    const effect = rule.effects.find((item) => CITE_GROUPS[index].effects.includes(item))
+    if (!effect) return
+    seen.add(key)
+    buckets[index].lines.push(`${line} — ${GOOD[effect]}`)
+  })
+
+  return buckets.filter((bucket) => bucket.lines.length > 0)
+}
+
 export function reviewFormula(ingredients: string, criterion: string) {
   const profile = profileFor(criterion)
   const plus: string[] = []

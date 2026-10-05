@@ -21,6 +21,8 @@ import { createId } from '@/lib/ids'
 import { imagePayload } from '@/lib/readLabel'
 import { useCatalog } from '@/lib/store'
 import { shortVerdict } from '@/lib/analyze'
+import { answerSection, splitAnswerPoint } from '@/lib/answerView'
+import { chatIntro } from '@/lib/chatIntro'
 import { font, theme } from '@/theme'
 import type { ChatMessage, ProductReport } from '@/types'
 
@@ -177,7 +179,18 @@ export function PickScreen() {
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScreenHeader
-        crumbs={['Care', found.category.title, found.section.title, criterion]}
+        crumbs={[
+          { label: 'Care', onPress: () => goBack('/') },
+          {
+            label: found.category.title,
+            onPress: () => goBack({ pathname: '/category/[id]', params: { id: found.category.id } }),
+          },
+          {
+            label: found.section.title,
+            onPress: () => goBack({ pathname: '/section/[id]', params: { id: found.section.id } }),
+          },
+          { label: criterion },
+        ]}
         title={criterion}
         onBack={() => goBack({ pathname: '/section/[id]', params: { id: found.section.id } })}
         action={session.messages.length > 0 ? { label: 'Очистить', onPress: () => setConfirmingClear(true) } : undefined}
@@ -192,10 +205,14 @@ export function PickScreen() {
         {session.products.length > 0 ? <Selected products={session.products} /> : null}
         {session.messages.length === 0 && !busy ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Спросите про средство</Text>
-            <Text style={styles.emptyBody}>
-              Напишите название, сфотографируйте упаковку или вставьте состав сами. В ответе будут плюсы, минусы и вердикт: кому средство подходит и как им пользоваться. Потом можно задавать уточнения.
-            </Text>
+            <Text style={styles.emptyTitle}>{chatIntro.title}</Text>
+            <Text style={styles.emptyBody}>{chatIntro.lead}</Text>
+            {chatIntro.points.map((point) => (
+              <Text key={point} style={styles.emptyPoint}>
+                {point}
+              </Text>
+            ))}
+            <Text style={styles.emptyBody}>{chatIntro.tail}</Text>
           </View>
         ) : (
           <View style={styles.messages}>
@@ -212,7 +229,7 @@ export function PickScreen() {
       </ScrollView>
       <View style={[styles.composerWrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         {session.products.length > 0 ? (
-          <Text style={styles.compareHint}>Можно уточнить, вставить другой состав, назвать ещё один продукт или сфотографировать упаковку.</Text>
+          <Text style={styles.compareHint}>Можно уточнить, вставить другой состав, назвать ещё один продукт или сфотографировать упаковку. С лицевой стороны состав ищется на официальном сайте бренда.</Text>
         ) : null}
         {formulaOpen ? (
           <TextInput
@@ -353,11 +370,22 @@ function Message({ message, preview }: { message: ChatMessage; preview?: string 
 }
 
 function AssistantLine({ text, spaced }: { text: string; spaced: boolean }) {
-  const section = sectionLabel(text)
+  const section = answerSection(text)
   if (section) {
-    return <Text style={[styles.section, section.tone === 'minus' && styles.sectionMinus, spaced && styles.sectionGap]}>{section.label}</Text>
+    return (
+      <Text
+        style={[
+          styles.section,
+          section.tone === 'minus' && styles.sectionMinus,
+          section.tone === 'group' && styles.sectionGroup,
+          spaced && (section.tone === 'group' ? styles.sectionGroupGap : styles.sectionGap),
+        ]}
+      >
+        {section.label}
+      </Text>
+    )
   }
-  const point = splitPoint(text)
+  const point = splitAnswerPoint(text)
   if (point) {
     return (
       <Text selectable style={[styles.body, spaced && styles.gap]}>
@@ -372,22 +400,6 @@ function AssistantLine({ text, spaced }: { text: string; spaced: boolean }) {
       {text}
     </Text>
   )
-}
-
-function sectionLabel(text: string) {
-  if (text === 'ПЛЮСЫ') return { label: 'Что здесь хорошо', tone: 'plus' as const }
-  if (text === 'МИНУСЫ') return { label: 'Что здесь настораживает', tone: 'minus' as const }
-  if (text === 'ВЕРДИКТ') return { label: 'Общий вердикт', tone: 'plus' as const }
-  if (text === 'СОВЕТ') return { label: 'Совет', tone: 'plus' as const }
-  return null
-}
-
-function splitPoint(text: string) {
-  const dash = text.match(/^(.{2,80}?)\s+[—–]\s+(.+)$/)
-  if (dash) return { name: dash[1], rest: dash[2] }
-  const colon = text.match(/^(.{2,60}?):\s+(.+)$/)
-  if (colon && !colon[1].includes('.')) return { name: colon[1], rest: colon[2] }
-  return null
 }
 
 const styles = StyleSheet.create({
@@ -455,6 +467,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 22,
   },
+  emptyPoint: {
+    marginTop: 8,
+    color: theme.ink,
+    fontFamily: font.regular,
+    fontSize: 16,
+    lineHeight: 22,
+  },
   messages: {
     marginTop: 16,
     gap: 10,
@@ -511,8 +530,14 @@ const styles = StyleSheet.create({
   sectionMinus: {
     color: '#8C4A3A',
   },
+  sectionGroup: {
+    fontSize: 15,
+  },
   sectionGap: {
     marginTop: 16,
+  },
+  sectionGroupGap: {
+    marginTop: 12,
   },
   pointName: {
     fontFamily: font.semibold,
@@ -592,7 +617,7 @@ const styles = StyleSheet.create({
   source: {
     color: theme.muted,
     fontFamily: font.regular,
-    fontSize: 13,
+    fontSize: 15,
     paddingVertical: 4,
   },
   sourceOff: {

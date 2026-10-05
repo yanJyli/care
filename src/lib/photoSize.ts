@@ -1,0 +1,3 @@
+export const LABEL_PHOTO_EDGE = 1920
+export const LABEL_PHOTO_QUALITY = 0.82
+export const LABEL_PHOTO_MAX_BASE64 = 1_800_000

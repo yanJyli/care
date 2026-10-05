@@ -1,8 +1,8 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
 import { geminiTarget } from './gemini'
+import { LABEL_PHOTO_EDGE, LABEL_PHOTO_MAX_BASE64, LABEL_PHOTO_QUALITY } from './photoSize'
 
 const MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash']
-const MAX_EDGE = 768
 
 const PROMPT = `Посмотри на фото упаковки косметического средства.
 Верни только две строки:
@@ -37,7 +37,7 @@ export async function imagePayload(asset: AssetBits): Promise<LabelPhoto | null>
   const raw = await rawDataUrl(asset)
   if (!raw) return null
   const photo = splitDataUrl(await shrink(raw))
-  if (!photo || photo.base64.length > 700_000) return null
+  if (!photo || photo.base64.length > LABEL_PHOTO_MAX_BASE64) return null
   return photo
 }
 
@@ -118,7 +118,7 @@ async function compress(asset: AssetBits): Promise<LabelPhoto | null> {
     const size = fit(asset.width ?? 0, asset.height ?? 0)
     if (size) context.resize(size)
     const rendered = await context.renderAsync()
-    const saved = await rendered.saveAsync({ compress: 0.55, format: SaveFormat.JPEG, base64: true })
+    const saved = await rendered.saveAsync({ compress: LABEL_PHOTO_QUALITY, format: SaveFormat.JPEG, base64: true })
     if (!saved.base64) return null
     return { mimeType: 'image/jpeg', base64: saved.base64.replace(/\s/g, '') }
   } catch {
@@ -127,9 +127,9 @@ async function compress(asset: AssetBits): Promise<LabelPhoto | null> {
 }
 
 function fit(width: number, height: number) {
-  if (width <= 0 || height <= 0) return { width: MAX_EDGE }
-  if (width <= MAX_EDGE && height <= MAX_EDGE) return null
-  return width >= height ? { width: MAX_EDGE } : { height: MAX_EDGE }
+  if (width <= 0 || height <= 0) return { width: LABEL_PHOTO_EDGE }
+  if (width <= LABEL_PHOTO_EDGE && height <= LABEL_PHOTO_EDGE) return null
+  return width >= height ? { width: LABEL_PHOTO_EDGE } : { height: LABEL_PHOTO_EDGE }
 }
 
 async function rawDataUrl(asset: AssetBits) {
@@ -200,7 +200,7 @@ function shrink(dataUrl: string) {
   return new Promise<string>((resolve) => {
     const img = new window.Image()
     img.onload = () => {
-      const maxEdge = MAX_EDGE
+      const maxEdge = LABEL_PHOTO_EDGE
       const scale = Math.min(1, maxEdge / Math.max(img.width, img.height))
       const width = Math.max(1, Math.round(img.width * scale))
       const height = Math.max(1, Math.round(img.height * scale))
@@ -213,7 +213,7 @@ function shrink(dataUrl: string) {
         return
       }
       ctx.drawImage(img, 0, 0, width, height)
-      resolve(canvas.toDataURL('image/jpeg', 0.55))
+      resolve(canvas.toDataURL('image/jpeg', LABEL_PHOTO_QUALITY))
     }
     img.onerror = () => resolve(dataUrl)
     img.src = dataUrl

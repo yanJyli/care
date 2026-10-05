@@ -3,20 +3,20 @@ import { font, theme } from '@/theme'
 
 type Action = { label: string; onPress: () => void }
 
+export type Crumb = { label: string; onPress?: () => void }
+
 export function ScreenHeader({
   crumbs,
-  title,
   subtitle,
   onBack,
   action,
 }: {
-  crumbs?: string[]
+  crumbs?: Crumb[]
   title: string
   subtitle?: string
   onBack?: () => void
   action?: Action
 }) {
-  const trail = crumbs?.map((item) => item.toUpperCase()).join(' · ')
   return (
     <View style={styles.wrap}>
       {onBack || action ? (
@@ -35,7 +35,25 @@ export function ScreenHeader({
           ) : null}
         </View>
       ) : null}
-      {trail ? <Text style={styles.crumbs}>{trail}</Text> : null}
+      {crumbs && crumbs.length > 0 ? (
+        <View style={styles.crumbs} accessibilityRole="list">
+          {crumbs.map((crumb, index) => {
+            const label = crumb.label.toUpperCase()
+            return (
+              <View key={`${crumb.label}-${index}`} style={styles.crumb}>
+                {index > 0 ? <Text style={styles.crumbText}> · </Text> : null}
+                {crumb.onPress ? (
+                  <Pressable accessibilityRole="link" hitSlop={8} onPress={crumb.onPress}>
+                    <Text style={[styles.crumbText]}>{label}</Text>
+                  </Pressable>
+                ) : (
+                  <Text style={styles.crumbText}>{label}</Text>
+                )}
+              </View>
+            )
+          })}
+        </View>
+      ) : null}
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
     </View>
   )
@@ -71,11 +89,20 @@ const styles = StyleSheet.create({
   },
   crumbs: {
     marginTop: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
+  crumb: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  crumbText: {
     color: theme.accent,
     fontFamily: font.medium,
     fontSize: 14,
     letterSpacing: 1.8,
-    lineHeight: 18,
+    lineHeight: 22,
   },
   title: {
     marginTop: 6,

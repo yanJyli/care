@@ -1,0 +1,11 @@
+[build]
+  command = "npm install --prefix care_web && npm run build --prefix care_web"
+  publish = "care_web/dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
