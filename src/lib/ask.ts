@@ -1,4 +1,5 @@
 import { seedCategories } from '../data/seed'
+import { formulaTitle, looksLikeQuestion } from './composer'
 import { geminiTarget } from './gemini'
 import { localReply } from './localAnswer'
 import { productQuery } from './readLabel'
@@ -90,7 +91,7 @@ export async function reply(input: ChatRequest) {
   const pasted = input.formula?.trim() ?? ''
   const followUp = !pasted && isFollowUp(input.query, input.products.length > 0)
   const found = pasted || followUp || input.photo ? null : await lookup(input.query)
-  const manualName = input.query.trim() && input.query.trim() !== 'Разбери этот состав' ? input.query.trim() : 'Свой состав'
+  const manualName = pasted ? formulaTitle(input.query) : input.query.trim() && input.query.trim() !== 'Разбери этот состав' ? input.query.trim() : 'Свой состав'
   const products = input.photo
     ? input.products
     : pasted
@@ -196,7 +197,9 @@ async function ask(
         '',
       ]
     }),
-    'Сообщение пользователя:',
+    input.formula?.trim() && looksLikeQuestion(input.query)
+      ? 'Сообщение пользователя — вопрос про присланный состав. Это не название средства:'
+      : 'Сообщение пользователя:',
     input.query,
     ...(input.photo
       ? [
@@ -214,6 +217,7 @@ async function ask(
       ? [
           'Состав уже установлен. В блоке СОСТАВ повтори его дословно и не добавляй компоненты другого похожего средства:',
           input.formula.trim(),
+          ...(looksLikeQuestion(input.query) ? ['Вопрос выше относится к этому составу. Название средства не задано.'] : []),
           ...(input.usage?.trim()
             ? ['Способ применения с той же страницы. В совете передай его и не заменяй своим режимом:', input.usage.trim()]
             : []),

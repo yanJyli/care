@@ -44,7 +44,7 @@ export function ScreenHeader({
                 {index > 0 ? <Text style={styles.crumbText}> · </Text> : null}
                 {crumb.onPress ? (
                   <Pressable accessibilityRole="link" hitSlop={8} onPress={crumb.onPress}>
-                    <Text style={[styles.crumbText]}>{label}</Text>
+                    <Text style={styles.crumbText}>{label}</Text>
                   </Pressable>
                 ) : (
                   <Text style={styles.crumbText}>{label}</Text>
@@ -103,6 +103,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 1.8,
     lineHeight: 22,
+    textDecorationLine: 'none',
   },
   title: {
     marginTop: 6,

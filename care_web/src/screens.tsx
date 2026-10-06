@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { shortVerdict } from '@/lib/analyze'
 import { answerSection, splitAnswerPoint } from '@/lib/answerView'
 import { chatIntro } from '@/lib/chatIntro'
+import { readComposer, submitsOnEnter } from '@/lib/composer'
 import { consult } from '@/lib/consult'
 import { createId } from '@/lib/ids'
 import type { ChatMessage, ChatRedirect, ProductReport } from '@/types'
@@ -150,8 +151,6 @@ export function PickScreen({ id }: { id: string }) {
   const found = criterionById(id)
   const session = sessionFor(id)
   const [draft, setDraft] = useState('')
-  const [formula, setFormula] = useState('')
-  const [formulaOpen, setFormulaOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [phase, setPhase] = useState<'photo' | 'reply'>('reply')
   const [shots, setShots] = useState<Record<string, string>>({})
@@ -160,6 +159,7 @@ export function PickScreen({ id }: { id: string }) {
   const generation = useRef(0)
   const sending = useRef(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const fieldRef = useRef<HTMLTextAreaElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
   const libraryRef = useRef<HTMLInputElement>(null)
 
@@ -186,35 +186,34 @@ export function PickScreen({ id }: { id: string }) {
   const sectionTitle = found.section.title
   const sectionId = found.section.id
   const zoneTitle = found.category.title
-  const canSend = (draft.trim().length > 0 || formula.trim().length > 0) && !busy
+  const canSend = draft.trim().length > 0 && !busy
 
   async function send() {
-    const formulaText = formula.trim()
-    const query = draft.trim() || (formulaText ? 'Разбери этот состав' : '')
-    if (!query || sending.current) return
+    const read = readComposer(draft)
+    if (!read.query || sending.current) return
     sending.current = true
     const ticket = generation.current
     setPhase('reply')
     const userMessage: ChatMessage = {
       id: createId('m'),
       role: 'user',
-      paragraphs: formulaText ? [query === 'Разбери этот состав' ? 'Свой состав' : query, 'Состав указан вручную'] : [query],
+      paragraphs: read.formula ? [read.question ? read.query : read.name || 'Свой состав', 'Состав указан вручную'] : [read.query],
     }
     setDraft('')
-    setFormula('')
+    if (fieldRef.current) fieldRef.current.style.height = ''
     setBusy(true)
     updateSession(id, (current) => ({ ...current, messages: [...current.messages, userMessage] }))
     scrollDown()
     try {
       const result = await consult({
-        query,
+        query: read.query,
         criterion,
         section: sectionTitle,
         sectionId,
         zone: zoneTitle,
         previous: session.products,
         history: [...session.messages, userMessage],
-        formula: formulaText,
+        formula: read.formula,
       })
       if (ticket !== generation.current) return
       const assistant: ChatMessage = {
@@ -345,20 +344,24 @@ export function PickScreen({ id }: { id: string }) {
         {session.products.length > 0 ? (
           <p className="compare-hint">Можно уточнить, вставить другой состав, назвать ещё один продукт или сфотографировать упаковку. С лицевой стороны состав ищется на официальном сайте бренда.</p>
         ) : null}
-        {formulaOpen ? (
-          <textarea
-            value={formula}
-            onChange={(event) => setFormula(event.target.value)}
-            placeholder="Вставьте состав: Aqua, Glycerin, Sodium Lauryl Sulfate…"
-            disabled={busy}
-          />
-        ) : null}
         <div className="composer-row">
-          <input
+          <textarea
+            ref={fieldRef}
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder="Продукт или вопрос"
+            onChange={(event) => {
+              setDraft(event.target.value)
+              const node = event.target
+              node.style.height = 'auto'
+              node.style.height = `${Math.min(node.scrollHeight, 140)}px`
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' || event.shiftKey || !submitsOnEnter(draft)) return
+              event.preventDefault()
+              void send()
+            }}
+            placeholder="Состав, продукт или вопрос"
             disabled={busy}
+            rows={1}
           />
           <button type="submit" className="send" aria-label="Отправить" disabled={!canSend}>
             →
@@ -370,9 +373,6 @@ export function PickScreen({ id }: { id: string }) {
           </button>
           <button type="button" disabled={busy} onClick={() => libraryRef.current?.click()}>
             Галерея
-          </button>
-          <button type="button" disabled={busy} onClick={() => setFormulaOpen((open) => !open)}>
-            {formulaOpen ? 'Скрыть состав' : formula.trim() ? 'Состав готов к отправке' : 'Ввести состав'}
           </button>
         </div>
         {photoHint ? <p className="photo-hint">{photoHint}</p> : null}

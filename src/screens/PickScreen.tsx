@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ScreenHeader } from '@/components/ScreenHeader'
 import { goBack } from '@/lib/back'
+import { readComposer, submitsOnEnter } from '@/lib/composer'
 import { consult } from '@/lib/consult'
 import { createId } from '@/lib/ids'
 import { imagePayload } from '@/lib/readLabel'
@@ -33,8 +34,6 @@ export function PickScreen() {
   const found = criterionById(id ?? '')
   const session = sessionFor(id ?? '')
   const [draft, setDraft] = useState('')
-  const [formula, setFormula] = useState('')
-  const [formulaOpen, setFormulaOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [phase, setPhase] = useState<'photo' | 'reply'>('reply')
   const [shots, setShots] = useState<Record<string, string>>({})
@@ -59,32 +58,30 @@ export function PickScreen() {
   }
 
   async function send() {
-    const formulaText = formula.trim()
-    const query = draft.trim() || (formulaText ? 'Разбери этот состав' : '')
-    if (!query || sending.current) return
+    const read = readComposer(draft)
+    if (!read.query || sending.current) return
     sending.current = true
     const ticket = generation.current
     setPhase('reply')
     const userMessage: ChatMessage = {
       id: createId('m'),
       role: 'user',
-      paragraphs: formulaText ? [query === 'Разбери этот состав' ? 'Свой состав' : query, 'Состав указан вручную'] : [query],
+      paragraphs: read.formula ? [read.question ? read.query : read.name || 'Свой состав', 'Состав указан вручную'] : [read.query],
     }
     setDraft('')
-    setFormula('')
     setBusy(true)
     updateSession(id, (current) => ({ ...current, messages: [...current.messages, userMessage] }))
     scrollDown()
     try {
       const result = await consult({
-        query,
+        query: read.query,
         criterion,
         section: sectionTitle,
         sectionId,
         zone: zoneTitle,
         previous: session.products,
         history: [...session.messages, userMessage],
-        formula: formulaText,
+        formula: read.formula,
       })
       if (ticket !== generation.current) return
       const assistant: ChatMessage = {
@@ -174,7 +171,7 @@ export function PickScreen() {
     clearSession(id)
   }
 
-  const canSend = (draft.trim().length > 0 || formula.trim().length > 0) && !busy
+  const canSend = draft.trim().length > 0 && !busy
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -231,30 +228,21 @@ export function PickScreen() {
         {session.products.length > 0 ? (
           <Text style={styles.compareHint}>Можно уточнить, вставить другой состав, назвать ещё один продукт или сфотографировать упаковку. С лицевой стороны состав ищется на официальном сайте бренда.</Text>
         ) : null}
-        {formulaOpen ? (
-          <TextInput
-            value={formula}
-            onChangeText={setFormula}
-            placeholder="Вставьте состав: Aqua, Glycerin, Sodium Lauryl Sulfate…"
-            placeholderTextColor={theme.muted}
-            underlineColorAndroid="transparent"
-            style={styles.formula}
-            editable={!busy}
-            multiline
-            textAlignVertical="top"
-          />
-        ) : null}
         <View style={styles.composer}>
           <TextInput
             value={draft}
             onChangeText={setDraft}
-            placeholder="Продукт или вопрос"
+            placeholder="Состав, продукт или вопрос"
             placeholderTextColor={theme.muted}
             underlineColorAndroid="transparent"
             style={styles.input}
             editable={!busy}
-            returnKeyType="send"
-            onSubmitEditing={() => void send()}
+            multiline
+            textAlignVertical="top"
+            blurOnSubmit={submitsOnEnter(draft)}
+            onSubmitEditing={() => {
+              if (submitsOnEnter(draft)) void send()
+            }}
           />
           <Pressable
             accessibilityRole="button"
@@ -272,11 +260,6 @@ export function PickScreen() {
           </Pressable>
           <Pressable accessibilityRole="button" accessibilityLabel="Выбрать фото из галереи" disabled={busy} onPress={() => void sendPhoto('library')}>
             <Text style={[styles.source, busy && styles.sourceOff]}>Галерея</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" disabled={busy} onPress={() => setFormulaOpen((open) => !open)}>
-            <Text style={[styles.source, busy && styles.sourceOff]}>
-              {formulaOpen ? 'Скрыть состав' : formula.trim() ? 'Состав готов к отправке' : 'Ввести состав'}
-            </Text>
           </Pressable>
         </View>
         {photoHint ? <Text style={styles.photoHint}>{photoHint}</Text> : null}
@@ -557,37 +540,23 @@ const styles = StyleSheet.create({
   },
   composer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: 8,
   },
   input: {
     flex: 1,
-    height: 52,
+    minHeight: 52,
+    maxHeight: 52,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: theme.line,
     backgroundColor: theme.card,
     paddingHorizontal: 16,
+    paddingVertical: 14,
     color: theme.ink,
     fontFamily: font.regular,
     fontSize: 16,
-    outlineStyle: 'solid',
-    outlineWidth: 0,
-    outlineColor: 'transparent',
-  },
-  formula: {
-    minHeight: 96,
-    marginBottom: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.line,
-    backgroundColor: theme.card,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: theme.ink,
-    fontFamily: font.regular,
-    fontSize: 15,
-    lineHeight: 21,
+    lineHeight: 22,
     outlineStyle: 'solid',
     outlineWidth: 0,
     outlineColor: 'transparent',

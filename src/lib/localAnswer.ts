@@ -1,6 +1,7 @@
 import { analyzeProduct, citeFormula, describeComparison, describeSingle, reviewFormula, shortVerdict } from '@/lib/analyze'
-import { findProduct } from '@/lib/search'
 import type { ChatRequest } from '@/lib/ask'
+import { formulaTitle } from '@/lib/composer'
+import { findProduct } from '@/lib/search'
 import type { ProductReport } from '@/types'
 
 export async function localReply(input: ChatRequest) {
@@ -8,7 +9,7 @@ export async function localReply(input: ChatRequest) {
   const followUp = !pasted && isFollowUp(input.query, input.products.length > 0)
   if (followUp) return { paragraphs: followUpParagraphs(input), product: null }
 
-  const manualName = input.query.trim() && input.query.trim() !== 'Разбери этот состав' ? input.query.trim() : 'Свой состав'
+  const manualName = pasted ? formulaTitle(input.query) : input.query.trim() && input.query.trim() !== 'Разбери этот состав' ? input.query.trim() : 'Свой состав'
   if (pasted) {
     const report = analyzeProduct(
       { code: '', query: input.query, name: manualName, brand: '', ingredients: pasted },

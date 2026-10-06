@@ -81,10 +81,14 @@ h1, h2, p { margin: 0; }
   align-items: center;
 }
 
-.crumb-link {
+.crumb-link,
+.crumb-link:hover,
+.crumb-link:focus,
+.crumb-link:focus-visible,
+.crumb-link:active,
+.crumb-link:visited {
   color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
 }
 
 .crumb-link:hover,
@@ -409,27 +413,22 @@ h1 {
   outline: none;
 }
 
-.composer textarea {
-  min-height: 96px;
-  margin-bottom: 8px;
-  padding: 12px 16px;
-  font-size: 15px;
-  line-height: 21px;
-  resize: vertical;
-  background: #fbfaf6;
-}
-
 .composer-row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: 8px;
 }
 
-.composer-row input {
+.composer-row textarea {
   flex: 1;
-  height: 52px;
-  padding: 0 16px;
+  width: auto;
+  min-width: 0;
+  min-height: 52px;
+  max-height: 140px;
+  padding: 14px 16px;
   font-size: 16px;
+  line-height: 22px;
+  resize: none;
   background: #fbfaf6;
 }
 
